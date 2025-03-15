@@ -1,0 +1,83 @@
+package BrokenLinks;
+
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.chrome.ChromeDriver;
+import io.github.bonigarcia.wdm.WebDriverManager;
+
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.List;
+
+public class BrokenLinksAndImagesChecker {
+    public static void main(String[] args) {
+        // Setup ChromeDriver using WebDriverManager
+        WebDriverManager.chromedriver().setup();
+        WebDriver driver = new ChromeDriver();
+
+        // Define the base URL
+        String baseUrl = "https://demo.coolincool.com/";
+
+        // Maximize the browser window
+        driver.manage().window().maximize();
+
+        // Open the target website
+        driver.get(baseUrl);
+        
+        driver.findElement(By.xpath("//input[@name='username']")).sendKeys("client");
+        driver.findElement(By.xpath("//input[@name='password']")).sendKeys("Test@1231");
+        driver.findElement(By.xpath("//button[text()='Sign in']")).click();
+
+        // Check all anchor links
+        List<WebElement> anchorTags = driver.findElements(By.tagName("a"));
+        for (WebElement anchor : anchorTags) {
+            String href = anchor.getDomAttribute("href");
+            if (href != null && !href.isEmpty()) {
+                try {
+                    URL url = new URL(new URL(baseUrl), href);
+                    checkBrokenLink(url);
+                } catch (MalformedURLException e) {
+                    System.out.println("⚠️ Invalid URL: " + href);
+                }
+            }
+        }
+
+        // Check all image links
+        List<WebElement> imgTags = driver.findElements(By.tagName("img"));
+        for (WebElement img : imgTags) {
+            String src = img.getDomAttribute("src");
+            if (src != null && !src.isEmpty()) {
+                try {
+                    URL url = new URL(new URL(baseUrl), src);
+                    checkBrokenLink(url);
+                } catch (MalformedURLException e) {
+                    System.out.println("⚠️ Invalid Image URL: " + src);
+                }
+            }
+        }
+
+        // Close the browser
+        driver.quit();
+    }
+
+    public static void checkBrokenLink(URL url) {
+        try {
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("HEAD");
+            connection.connect();
+            int responseCode = connection.getResponseCode();
+
+            if (responseCode >= 400) {
+                System.out.println("❌ Broken Link: " + url + " | Response Code: " + responseCode);
+            } else {
+                System.out.println("✅ Valid Link: " + url + " | Response Code: " + responseCode);
+            }
+
+        } catch (IOException e) {
+            System.out.println("⚠️ Error Checking Link: " + url);
+        }
+    }
+}
